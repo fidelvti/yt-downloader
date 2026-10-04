@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+downloads/
+.git/
+.DS_Store
+*.md
+docs/
+LICENSE
+compose.yaml
+Dockerfile
+.dockerignore

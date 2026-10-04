@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    container_name: yt-clip
+    ports:
+      - "127.0.0.1:8000:8000"  # solo accesible desde tu máquina, no desde la red
+    volumes:
+      - ./downloads:/app/downloads
+    restart: unless-stopped

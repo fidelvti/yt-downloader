@@ -17,7 +17,10 @@ DOWNLOAD_DIR = BASE / "downloads"
 STATIC_DIR = BASE / "static"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 
-YT_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"}
+ALLOWED_HOSTS = {
+    "youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be",
+    "x.com", "www.x.com", "mobile.x.com", "twitter.com", "www.twitter.com", "mobile.twitter.com",
+}
 TIME_RE = re.compile(r"^\d+(:\d{1,2}){0,2}(\.\d+)?$")
 
 app = FastAPI()
@@ -46,8 +49,8 @@ def parse_time(text: str, field: str) -> Optional[float]:
 def check_url(url: str) -> str:
     url = url.strip()
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or (parsed.hostname or "").lower() not in YT_HOSTS:
-        raise HTTPException(400, "Solo se admiten URLs de YouTube")
+    if parsed.scheme not in ("http", "https") or (parsed.hostname or "").lower() not in ALLOWED_HOSTS:
+        raise HTTPException(400, "Solo se admiten URLs de YouTube o X (Twitter)")
     return url
 
 
