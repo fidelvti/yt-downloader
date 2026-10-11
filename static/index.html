@@ -21,6 +21,13 @@
   button { margin-top:20px; width:100%; padding:12px; font:inherit; font-weight:600; color:#fff;
            background:var(--accent); border:0; border-radius:8px; cursor:pointer; }
   button:disabled { opacity:.5; cursor:default; }
+  .field { position:relative; }
+  .field input { padding-right:36px; }
+  .field .clear { position:absolute; right:6px; top:50%; transform:translateY(-50%); margin:0; width:24px; height:24px;
+                  padding:0; display:none; align-items:center; justify-content:center; font-size:18px; line-height:1;
+                  font-weight:400; color:var(--muted); background:transparent; border-radius:50%; }
+  .field .clear:hover { color:var(--fg); background:var(--line); }
+  .field.has-value .clear { display:flex; }
   .hint { font-size:.8rem; color:var(--muted); margin-top:4px; }
   #status { margin-top:24px; display:none; }
   .bar { height:8px; background:var(--card); border:1px solid var(--line); border-radius:99px; overflow:hidden; }
@@ -35,7 +42,10 @@
   <h1>Online Video Downloader</h1>
   <form id="form">
     <label for="url">URL de YouTube o X</label>
-    <input id="url" type="url" required placeholder="https://www.youtube.com/watch?v=... o https://x.com/usuario/status/..." autofocus>
+    <div class="field" id="urlField">
+      <input id="url" type="url" required placeholder="https://www.youtube.com/watch?v=... o https://x.com/usuario/status/..." autofocus>
+      <button id="clearUrl" class="clear" type="button" aria-label="Borrar URL" title="Borrar">×</button>
+    </div>
 
     <div class="row">
       <div>
@@ -61,6 +71,16 @@
 <script>
 const $ = id => document.getElementById(id);
 const form = $("form"), go = $("go"), box = $("status"), fill = $("fill"), msg = $("msg");
+
+const urlInput = $("url"), urlField = $("urlField");
+const syncClear = () => urlField.classList.toggle("has-value", urlInput.value !== "");
+urlInput.addEventListener("input", syncClear);
+$("clearUrl").addEventListener("click", () => {
+  urlInput.value = "";
+  syncClear();
+  urlInput.focus();
+});
+syncClear();
 
 const LABELS = { queued: "En cola…", downloading: "Descargando…", processing: "Procesando con ffmpeg…" };
 
