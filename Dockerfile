@@ -7,6 +7,10 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ffmpeg && \
     rm -rf /var/lib/apt/lists/*
 
+# Runtime de JavaScript: yt-dlp lo necesita para resolver los retos de YouTube
+# (sin él las descargas van muy lentas o faltan formatos)
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
+
 # Dependencias primero para aprovechar la caché de capas
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

@@ -1,4 +1,5 @@
 fastapi~=0.142.2
 uvicorn~=0.54.0
-# Sin fijar a propósito: YouTube y X cambian a menudo y yt-dlp debe estar al día
-yt-dlp
+# Sin fijar a propósito: YouTube y X cambian a menudo y yt-dlp debe estar al día.
+# [default] incluye yt-dlp-ejs, necesario junto a un runtime de JavaScript (deno/node)
+yt-dlp[default]

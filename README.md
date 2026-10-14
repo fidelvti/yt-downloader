@@ -110,7 +110,13 @@ python -m pip install -U yt-dlp
 - **Docker** ([Dockerfile](Dockerfile), [compose.yaml](compose.yaml)): imagen `python:3.12-slim` con ffmpeg y las dependencias de [requirements.txt](requirements.txt).
 - **Dependencias**: FastAPI y uvicorn están fijados a una versión menor para evitar roturas. yt-dlp va sin fijar a propósito, porque necesita estar siempre al día.
 - **Formato**: mejor calidad MP4 hasta 1080p, con alternativas si no existe.
-- **Recortes**: se cortan en el keyframe más cercano para ser rápidos, así que pueden desplazarse uno o dos segundos. Si necesitas precisión exacta, añade `opts["force_keyframes_at_cuts"] = True` en `run_job`; recodifica el clip y es mucho más lento.
+- **Recortes**: bajar solo el tramo con ffmpeg es lento (~2x tiempo real), así que se aplica una regla mixta (`CLIP_RATIO` en `main.py`):
+  - Si el vídeo dura más de 30 veces el clip, se baja solo el tramo.
+  - Si no, se baja el vídeo entero con el descargador rápido de yt-dlp y se recorta en local con `ffmpeg -c copy`, sin recodificar.
+
+  Al no recodificar, el corte cae en un keyframe y el clip puede empezar unos segundos antes de lo pedido (un recorte de 30 s puede durar ~34 s). Si necesitas precisión exacta, añade `opts["force_keyframes_at_cuts"] = True` en `run_job`; recodifica el clip y es mucho más lento.
+- **Reintentos**: YouTube devuelve a veces un `HTTP Error 403` suelto al descargar. Cada método se reintenta hasta 3 veces (`RETRIES` en `main.py`) y, si el recorte directo no funciona, se pasa a bajar el vídeo entero. Solo se muestra el error si fallan todos los intentos.
+- **Runtime de JavaScript**: yt-dlp lo necesita para YouTube. La imagen Docker incluye `deno`; en el arranque manual instala `deno` o `node` (por ejemplo, `brew install deno`).
 - El estado de los trabajos vive en memoria, así que se pierde al reiniciar el servidor.
 
 ## Problemas habituales
