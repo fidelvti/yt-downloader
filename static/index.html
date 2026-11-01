@@ -35,15 +35,17 @@
   #msg { margin-top:8px; font-size:.9rem; word-break:break-word; }
   #msg.error { color:var(--accent); }
   a { color:var(--accent); }
+  #msg ul { margin:6px 0 0; padding-left:20px; }
+  input:disabled { opacity:.5; }
 </style>
 </head>
 <body>
 <main>
   <h1>Online Video Downloader</h1>
   <form id="form">
-    <label for="url">URL de YouTube o X</label>
+    <label for="url">URL de YouTube, X o Instagram</label>
     <div class="field" id="urlField">
-      <input id="url" type="url" required placeholder="https://www.youtube.com/watch?v=... o https://x.com/usuario/status/..." autofocus>
+      <input id="url" type="url" required placeholder="Pega aquí el enlace del vídeo" autofocus>
       <button id="clearUrl" class="clear" type="button" aria-label="Borrar URL" title="Borrar">×</button>
     </div>
 
@@ -57,7 +59,7 @@
         <input id="end" placeholder="1:30">
       </div>
     </div>
-    <div class="hint">Formato SS, MM:SS o HH:MM:SS. Déjalos vacíos para bajar el vídeo entero.</div>
+    <div class="hint" id="hint" data-default="Formato SS, MM:SS o HH:MM:SS. Déjalos vacíos para bajar el vídeo entero.">Formato SS, MM:SS o HH:MM:SS. Déjalos vacíos para bajar el vídeo entero.</div>
 
     <button id="go" type="submit">Descargar MP4</button>
   </form>
@@ -73,7 +75,22 @@ const $ = id => document.getElementById(id);
 const form = $("form"), go = $("go"), box = $("status"), fill = $("fill"), msg = $("msg");
 
 const urlInput = $("url"), urlField = $("urlField");
-const syncClear = () => urlField.classList.toggle("has-value", urlInput.value !== "");
+const isPlaylist = v => {
+  try {
+    const u = new URL(v.trim());
+    const list = u.searchParams.get("list") || "";
+    return (u.hostname.endsWith("youtube.com") || u.hostname === "youtu.be") && list !== "" && !list.startsWith("RD");
+  } catch { return false; }
+};
+const syncClear = () => {
+  urlField.classList.toggle("has-value", urlInput.value !== "");
+  // en playlists no hay recortes
+  const pl = isPlaylist(urlInput.value);
+  $("start").disabled = $("end").disabled = pl;
+  $("hint").textContent = pl
+    ? `Playlist detectada: se bajan todos sus vídeos en una carpeta, sin recortes.`
+    : $("hint").dataset.default;
+};
 urlInput.addEventListener("input", syncClear);
 $("clearUrl").addEventListener("click", () => {
   urlInput.value = "";
@@ -97,7 +114,16 @@ async function poll(id) {
     const j = await r.json();
     fill.style.width = `${j.progress}%`;
 
-    if (j.status === "done") {
+    if (j.status === "done" && j.folder) {
+      const esc = t => t.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
+      const link = f => `<a href="/files/${f.split("/").map(encodeURIComponent).join("/")}" target="_blank">${esc(f.split("/").pop())}</a>`;
+      let html = `Listo: ${j.files.length} de ${j.total} vídeos guardados en <b>downloads/${esc(j.folder)}/</b>`;
+      if (j.note) html += `<br>${esc(j.note)}`;
+      html += `<ul>${j.files.map(f => `<li>${link(f)}</li>`).join("")}</ul>`;
+      if (j.failed.length) html += `No se pudieron bajar:<ul>${j.failed.map(x => `<li>${esc(x.title)}: ${esc(x.error)}</li>`).join("")}</ul>`;
+      show(html, { html: true });
+      go.disabled = false;
+    } else if (j.status === "done") {
       const name = j.file.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
       show(`Listo: <a href="/files/${encodeURIComponent(j.file)}" target="_blank">${name}</a> (guardado en downloads/)`, { html: true });
       go.disabled = false;
@@ -105,7 +131,8 @@ async function poll(id) {
       show(j.error || "Error desconocido", { error: true });
       go.disabled = false;
     } else {
-      show(`${LABELS[j.status] || j.status} ${Math.round(j.progress)}%`);
+      const item = j.total ? `Vídeo ${j.item}/${j.total} · ` : "";
+      show(`${item}${LABELS[j.status] || j.status} ${Math.round(j.progress)}%`);
       setTimeout(() => poll(id), 1000);
     }
   } catch (e) {

@@ -1,6 +1,6 @@
 # Online Video Downloader
 
-Descargador local de vídeos de YouTube y X (Twitter) a MP4, con recorte opcional por tiempo. Se usa desde el navegador y los ficheros se guardan en `downloads/` (no se borran).
+Descargador local de vídeos de YouTube, X (Twitter) e Instagram a MP4, con recorte opcional por tiempo. Se usa desde el navegador y los ficheros se guardan en `downloads/` (no se borran).
 
 ![Captura de la aplicación](docs/screenshot.png)
 
@@ -8,7 +8,9 @@ Descargador local de vídeos de YouTube y X (Twitter) a MP4, con recorte opciona
 
 1. Arranca la app (con [Docker](#opción-a-docker-recomendada) o [a mano](#opción-b-arranque-manual)).
 2. Abre <http://127.0.0.1:8000>.
-3. Pega la URL de un vídeo de YouTube o de X y pulsa **Descargar MP4**.
+3. Pega la URL de un vídeo de YouTube, X o Instagram y pulsa **Descargar MP4**.
+
+**Playlists de YouTube**: pega cualquier enlace con `list=` (`youtube.com/playlist?list=…` o `watch?v=…&list=…`) y se bajan todos sus vídeos (se puede limitar con `MAX_PLAYLIST_ITEMS` en `main.py`) a una subcarpeta `downloads/<título de la playlist>/`, numerados. Si un vídeo falla (privado o borrado) se salta y se lista al final. Los recortes no se admiten en playlists; para recortar un vídeo que viene de una lista, quita `&list=…` del enlace. Los "Mix" automáticos de YouTube (`list=RD…`) son casi infinitos, así que con ellos se baja solo el vídeo del enlace.
 
 Los campos de inicio y fin son opcionales (formatos `SS`, `MM:SS` o `HH:MM:SS`). Si los dejas vacíos se descarga el vídeo entero. El MP4 queda en `downloads/` y también se sirve en `/files/<nombre>`.
 
@@ -35,7 +37,7 @@ La configuración está en [compose.yaml](compose.yaml). El contenedor se reinic
 
 ### Reconstruir (cambios de código o actualizar yt-dlp)
 
-`docker compose start` reutiliza la imagen ya construida. Si cambias el código, o si YouTube o X empiezan a fallar (casi siempre basta con actualizar yt-dlp), reconstruye sin caché para que baje la última versión:
+`docker compose start` reutiliza la imagen ya construida. Si cambias el código, o si YouTube, X o Instagram empiezan a fallar (casi siempre basta con actualizar yt-dlp), reconstruye sin caché para que baje la última versión:
 
 ```bash
 docker compose build --no-cache
@@ -103,7 +105,7 @@ python -m pip install -U yt-dlp
 ## Cómo está hecho
 
 - **Backend** ([main.py](main.py)): FastAPI + [yt-dlp](https://github.com/yt-dlp/yt-dlp).
-  - `POST /api/download` valida la URL (solo dominios de YouTube y X/Twitter, lista `ALLOWED_HOSTS`) y los tiempos, y lanza la descarga en un pool de 2 hilos.
+  - `POST /api/download` valida la URL (solo dominios de YouTube, X/Twitter e Instagram, lista `ALLOWED_HOSTS`) y los tiempos, y lanza la descarga en un pool de 2 hilos.
   - `GET /api/download/{id}` devuelve el estado y el progreso del trabajo, que el frontend consulta periódicamente.
   - `/files/<nombre>` sirve los MP4 descargados.
 - **Frontend** ([static/index.html](static/index.html)): una sola página en HTML y JavaScript, sin dependencias.
@@ -115,20 +117,22 @@ python -m pip install -U yt-dlp
   - Si no, se baja el vídeo entero con el descargador rápido de yt-dlp y se recorta en local con `ffmpeg -c copy`, sin recodificar.
 
   Al no recodificar, el corte cae en un keyframe y el clip puede empezar unos segundos antes de lo pedido (un recorte de 30 s puede durar ~34 s). Si necesitas precisión exacta, añade `opts["force_keyframes_at_cuts"] = True` en `run_job`; recodifica el clip y es mucho más lento.
+- **Playlists**: `run_playlist` lista la playlist sin descargar nada, y luego baja cada vídeo con la misma función que los vídeos sueltos (`download_video`), repartiendo el progreso entre todos. Ocupa uno de los 2 hilos del pool mientras dura.
 - **Reintentos**: YouTube devuelve a veces un `HTTP Error 403` suelto al descargar. Cada método se reintenta hasta 3 veces (`RETRIES` en `main.py`) y, si el recorte directo no funciona, se pasa a bajar el vídeo entero. Solo se muestra el error si fallan todos los intentos.
 - **Runtime de JavaScript**: yt-dlp lo necesita para YouTube. La imagen Docker incluye `deno`; en el arranque manual instala `deno` o `node` (por ejemplo, `brew install deno`).
 - El estado de los trabajos vive en memoria, así que se pierde al reiniciar el servidor.
 
 ## Problemas habituales
 
-- **`The page needs to be reloaded` u otros errores de YouTube o X**: yt-dlp está desactualizado. Actualízalo (ver [Docker](#reconstruir-cambios-de-código-o-actualizar-yt-dlp) o [arranque manual](#actualizar-yt-dlp)). Las versiones recientes exigen Python 3.10 o superior; con 3.9 pip se queda en una versión antigua.
+- **`The page needs to be reloaded` u otros errores de YouTube, X o Instagram**: yt-dlp está desactualizado. Actualízalo (ver [Docker](#reconstruir-cambios-de-código-o-actualizar-yt-dlp) o [arranque manual](#actualizar-yt-dlp)). Las versiones recientes exigen Python 3.10 o superior; con 3.9 pip se queda en una versión antigua.
 - **`Address already in use`**: ya hay algo en el puerto 8000, otro servidor o un contenedor. Ciérralo, o usa otro puerto: `--port 8001` en uvicorn, o cambia `"127.0.0.1:8000:8000"` por `"127.0.0.1:8001:8000"` en `compose.yaml`.
 - **Tuits sin vídeo, privados o de cuentas protegidas**: dan error, porque la app no gestiona inicio de sesión.
+- **Instagram**: funcionan los reels y posts públicos con vídeo. Los privados, las stories y muchos posts que Instagram exige ver con sesión iniciada dan error (`login required` o `rate-limit`), porque la app no gestiona inicio de sesión.
 - **Enlaces `t.co`**: no se admiten; pega la URL directa del tuit.
 
 ## Aviso legal
 
-Úsalo solo con contenido que tengas derecho a descargar y respeta los términos de servicio de YouTube y X. El autor no se hace responsable del uso que se haga de la herramienta.
+Úsalo solo con contenido que tengas derecho a descargar y respeta los términos de servicio de YouTube, X e Instagram. El autor no se hace responsable del uso que se haga de la herramienta.
 
 ## Licencia
 
