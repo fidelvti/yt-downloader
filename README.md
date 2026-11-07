@@ -48,13 +48,13 @@ docker compose up -d
 
 ### Requisitos
 
-- Python 3.10 o superior (probado con 3.12)
+- Python 3.10 o superior (probado con 3.12 y 3.15)
 - [ffmpeg](https://ffmpeg.org/) en el PATH (`brew install ffmpeg` en macOS): une audio y vídeo y recorta
 
 ### Instalación
 
 ```bash
-python3.12 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 python -m pip install -r requirements.txt
 ```
@@ -109,7 +109,7 @@ python -m pip install -U yt-dlp
   - `GET /api/download/{id}` devuelve el estado y el progreso del trabajo, que el frontend consulta periódicamente.
   - `/files/<nombre>` sirve los MP4 descargados.
 - **Frontend** ([static/index.html](static/index.html)): una sola página en HTML y JavaScript, sin dependencias.
-- **Docker** ([Dockerfile](Dockerfile), [compose.yaml](compose.yaml)): imagen `python:3.12-slim` con ffmpeg y las dependencias de [requirements.txt](requirements.txt).
+- **Docker** ([Dockerfile](Dockerfile), [compose.yaml](compose.yaml)): imagen `python:3.15-slim` con ffmpeg y las dependencias de [requirements.txt](requirements.txt).
 - **Dependencias**: FastAPI y uvicorn están fijados a una versión menor para evitar roturas. yt-dlp va sin fijar a propósito, porque necesita estar siempre al día.
 - **Formato**: mejor calidad MP4 hasta 1080p, con alternativas si no existe.
 - **Recortes**: bajar solo el tramo con ffmpeg es lento (~2x tiempo real), así que se aplica una regla mixta (`CLIP_RATIO` en `main.py`):
